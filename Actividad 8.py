@@ -1,7 +1,10 @@
 import PySimpleGUI as sg
 import os
+import matplotlib.pyplot as plt
+import pandas as pdt
 
 sg.theme("Dark Green3")
+
 
 def guardar_usuario(usuario, password, archivo="usuarios.txt"):
     """Guarda un usuario y contraseña en el archivo de texto."""
@@ -34,6 +37,7 @@ def guardar_evento(nombre, fecha, hora, lugar, cupo, imagen):
     except Exception as e:
         print(f"Error al guardar el evento: {e}")
 
+
 def cargar_eventos():
     try:
         eventos = []
@@ -65,12 +69,13 @@ def guardar_participante(participante, archivo="participantes.txt"):
     try:
         with open(archivo, "a") as file:
             file.write(
-                f"{participante['evento']},{participante['tipo_documento']},{participante['numero_documento']}," 
-                f"{participante['telefono']},{participante['tipo_participante']},{participante['direccion']}," 
+                f"{participante['evento']},{participante['tipo_documento']},{participante['numero_documento']},"
+                f"{participante['telefono']},{participante['tipo_participante']},{participante['direccion']},"
                 f"{participante['nombre']},{participante['imagen']}\n"
             )
     except Exception as e:
         print(f"Error al guardar el participante: {e}")
+
 
 def cargar_participantes(archivo="participantes.txt"):
     """Carga los participantes desde un archivo."""
@@ -100,15 +105,41 @@ def cargar_participantes(archivo="participantes.txt"):
         print(f"Error al cargar participantes: {e}")
     return participantes
 
+
 # Cargar los participantes desde el archivo al iniciar
 participantes = cargar_participantes()
+
+# Funciones para filtrar participantes
+def participantes_todos_los_eventos(participantes, eventos):
+    """Devuelve una lista de participantes que asistieron a todos los eventos."""
+    todos_los_eventos = {evento["nombre"] for evento in eventos}
+    return [
+        p["nombre"] for p in participantes
+        if {p["evento"] for p in participantes if p["nombre"] == p["nombre"]} == todos_los_eventos
+    ]
+
+def participantes_al_menos_un_evento(participantes):
+    """Devuelve una lista de participantes que asistieron al menos a un evento."""
+    return list({p["nombre"] for p in participantes})
+
+def participantes_solo_primer_evento(participantes, eventos):
+    """Devuelve una lista de participantes que asistieron solo al primer evento."""
+    if not eventos:
+        return []
+    primer_evento = eventos[0]["nombre"]
+    return [
+        p["nombre"] for p in participantes
+        if p["evento"] == primer_evento and sum(1 for x in participantes if x["nombre"] == p["nombre"]) == 1
+    ]
+
+
 
 config_file = "configuracion.txt"
 
 # Función para cargar la configuración desde el archivo TXT
 def cargar_configuracion():
     configuracion = {
-        "validar_aforo": False,
+        "validar_aforo": True,
         "solicitar_imagenes": False,
         "modificar_registros": False,
         "eliminar_registros": False,
@@ -128,6 +159,7 @@ def guardar_configuracion(config):
     with open(config_file, "w") as f:
         for clave, valor in config.items():
             f.write(f"{clave}={valor}\n")
+
 
 # Cargar la configuración inicial
 configuracion = cargar_configuracion()
@@ -179,16 +211,30 @@ layoutConfiguracion = [
     [sg.Checkbox("Solicitar Imagenes", key="solicitar_imagenes", default=configuracion["solicitar_imagenes"])],
     [sg.Checkbox("Modificar Registros", key="modificar_registros", default=configuracion["modificar_registros"])],
     [sg.Checkbox("Eliminar Registros", key="eliminar_registros", default=configuracion["eliminar_registros"])],
-    [sg.Button("Guardar Configuración", key="guardar_configuracion")],
+    [sg.Button("Guardar Configuracion", key="guardar_configuracion")],
 ]
+
+layoutAnalisis = [
+    [sg.Text("Participantes que fueron a todos los eventos")],
+    [sg.Multiline(size=(40, 5), key="TodosLosEventos", disabled=True)],
+
+    [sg.Text("Participantes que fueron al menos a un evento")],
+    [sg.Multiline(size=(40, 5), key="AlMenosUnEvento", disabled=True)],
+
+    [sg.Text("Participantes que fueron solo al primer evento")],
+    [sg.Multiline(size=(40, 5), key="SoloPrimerEvento", disabled=True)],
+]
+
 
 tabEventos = sg.Tab("Eventos", layoutEventos)
 tabParticipantes = sg.Tab("Participantes", layoutParticipantes)
 tabConfiguracion = sg.Tab("Configuracion", layoutConfiguracion)
+tabAnalisis = sg.Tab("Análisis", layoutAnalisis)
+
 
 # --- Ventana Principal ---
 def ventana_principal():
-    layout = [[sg.TabGroup([[tabEventos, tabParticipantes, tabConfiguracion]])]]
+    layout = [[sg.TabGroup([[tabEventos, tabParticipantes,tabAnalisis, tabConfiguracion]])]]
     return sg.Window("LA COP 16", layout)
 
 # --- Lógica Principal ---
@@ -281,29 +327,10 @@ while True:
             window["LISTA"].update([e["nombre"] for e in eventos])
             window["COMBO"].update(values=[e["nombre"] for e in eventos])  # Actualiza el ComboBox de participantes
             sg.popup("Evento eliminado con éxito.")
-            
-# Evento para manejar cambios en el ComboBox (COMBO)
-while True:
-    event, values = window.read()
 
-    if event == sg.WIN_CLOSED:
-        # Guardar datos al cerrar
-        with open("participantes.txt", "w") as file:
-            for p in participantes:
-                guardar_participante(p)
-        break
-
-    # Evento para actualizar lista de participantes al cambiar evento
-    if event == "COMBO":
-        evento_seleccionado = values["COMBO"]
-        if evento_seleccionado:
-            window["ListaParticipantes"].update(
-                [p["nombre"] for p in participantes if p["evento"] == evento_seleccionado]
-            )
-
-    # Evento para agregar participante
-    if event == "BTN_AGREGAR":
+    if event == "Agregar":
         try:
+            # Validar datos del formulario
             evento = values["COMBO"]
             tipo_documento = values["TipoDocumento"]
             numero_documento = values["NumeroDocumento"]
@@ -313,7 +340,7 @@ while True:
             nombre = values["NAME"]
             imagen = values["FileParticipantes"]
 
-            # Validaciones
+            # Validaciones básicas
             if not all([evento, tipo_documento, numero_documento, telefono, tipo_participante, direccion, nombre]):
                 raise ValueError("Todos los campos son obligatorios.")
 
@@ -323,9 +350,11 @@ while True:
             if imagen and not os.path.exists(imagen):
                 raise FileNotFoundError("No se encontró la imagen seleccionada.")
 
+            # Verificar si el participante ya existe
             if any(p["numero_documento"] == numero_documento for p in participantes):
                 raise ValueError("Ya existe un participante con este número de documento.")
 
+            # Validar cupo del evento seleccionado si la opción está habilitada
             if configuracion["validar_aforo"]:
                 evento_seleccionado = next((e for e in eventos if e["nombre"] == evento), None)
                 if evento_seleccionado:
@@ -333,6 +362,7 @@ while True:
                     if inscritos >= evento_seleccionado["cupo"]:
                         raise ValueError("No hay cupos disponibles para este evento.")
 
+            # Agregar participante a la lista
             nuevo_participante = {
                 "evento": evento,
                 "tipo_documento": tipo_documento,
@@ -347,25 +377,24 @@ while True:
             guardar_participante(nuevo_participante)
             window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento])
             sg.popup("Participante agregado con éxito.")
-
         except Exception as e:
             sg.popup_error(f"Error al agregar participante: {e}")
 
-    # Evento para modificar participante
-    if event == "BTN_MODIFICAR":
-        seleccionado = values["ListaParticipantes"]
-        evento_seleccionado = values["COMBO"]
+    if event == "Modificar":
+        
         try:
-            if not seleccionado or not evento_seleccionado:
-                raise ValueError("Debe seleccionar un evento y un participante para modificar.")
+            seleccionado = values["ListaParticipantes"]
+            if not seleccionado:
+                raise ValueError("Debe seleccionar un participante para modificar.")
 
             index = next(
-                (i for i, p in enumerate(participantes) if p["nombre"] == seleccionado[0] and p["evento"] == evento_seleccionado),
+                (i for i, p in enumerate(participantes) if p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"]),
                 None
             )
             if index is None:
                 raise ValueError("Participante no encontrado.")
 
+            # Actualizar datos
             participantes[index]["tipo_documento"] = values["TipoDocumento"] or participantes[index]["tipo_documento"]
             participantes[index]["numero_documento"] = values["NumeroDocumento"] or participantes[index]["numero_documento"]
             participantes[index]["telefono"] = values["TELEFONO"] or participantes[index]["telefono"]
@@ -374,37 +403,52 @@ while True:
             participantes[index]["nombre"] = values["NAME"] or participantes[index]["nombre"]
             participantes[index]["imagen"] = values["FileParticipantes"] or participantes[index]["imagen"]
 
+            # Guardar cambios en el archivo
             with open("participantes.txt", "w") as file:
                 for p in participantes:
-                    guardar_participante(p)
-            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento_seleccionado])
+                    guardar_participante(p, archivo="participantes.txt")
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
             sg.popup("Participante modificado con éxito.")
-
         except Exception as e:
             sg.popup_error(f"Error al modificar participante: {e}")
 
-    # Evento para eliminar participante
-    if event == "BTN_ELIMINAR":
-        seleccionado = values["ListaParticipantes"]
-        evento_seleccionado = values["COMBO"]
+
+
+    if event == "Eliminar":
+        
         try:
-            if not seleccionado or not evento_seleccionado:
-                raise ValueError("Debe seleccionar un evento y un participante para eliminar.")
+            seleccionado = values["ListaParticipantes"]
+            if not seleccionado:
+                raise ValueError("Debe seleccionar un participante para eliminar.")
 
-            participantes = [
-                p for p in participantes if not (p["nombre"] == seleccionado[0] and p["evento"] == evento_seleccionado)
-            ]
+            # Eliminar participante de la lista
+            participantes = [p for p in participantes if not (p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"])]
 
+            # Guardar cambios en el archivo
             with open("participantes.txt", "w") as file:
                 for p in participantes:
-                    guardar_participante(p)
-            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento_seleccionado])
+                    guardar_participante(p, archivo="participantes.txt")
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
             sg.popup("Participante eliminado con éxito.")
 
         except Exception as e:
             sg.popup_error(f"Error al eliminar participante: {e}")
+            
+    if event == "Guardar Configuracion":
+        # Guardar los valores de los checkboxes en el archivo de configuración
+        guardar_configuracion(values)
+        sg.popup("Configuración guardada exitosamente.", title="Guardado")
 
-
+    if event == "ActualizarAnálisis":
+        window["TodosLosEventos"].update(
+            "\n".join(participantes_todos_los_eventos(participantes, eventos))
+        )
+        window["AlMenosUnEvento"].update(
+            "\n".join(participantes_al_menos_un_evento(participantes))
+        )
+        window["SoloPrimerEvento"].update(
+            "\n".join(participantes_solo_primer_evento(participantes, eventos))
+        )
 
 
 
