@@ -3,7 +3,6 @@ import os
 
 sg.theme("Dark Green3")
 
-
 def guardar_usuario(usuario, password, archivo="usuarios.txt"):
     """Guarda un usuario y contraseña en el archivo de texto."""
     with open(archivo, "a") as file:
@@ -34,7 +33,6 @@ def guardar_evento(nombre, fecha, hora, lugar, cupo, imagen):
             archivo.write(f"{nombre},{fecha},{hora},{lugar},{cupo},{imagen}\n")
     except Exception as e:
         print(f"Error al guardar el evento: {e}")
-
 
 def cargar_eventos():
     try:
@@ -67,13 +65,12 @@ def guardar_participante(participante, archivo="participantes.txt"):
     try:
         with open(archivo, "a") as file:
             file.write(
-                f"{participante['evento']},{participante['tipo_documento']},{participante['numero_documento']},"
-                f"{participante['telefono']},{participante['tipo_participante']},{participante['direccion']},"
+                f"{participante['evento']},{participante['tipo_documento']},{participante['numero_documento']}," 
+                f"{participante['telefono']},{participante['tipo_participante']},{participante['direccion']}," 
                 f"{participante['nombre']},{participante['imagen']}\n"
             )
     except Exception as e:
         print(f"Error al guardar el participante: {e}")
-
 
 def cargar_participantes(archivo="participantes.txt"):
     """Carga los participantes desde un archivo."""
@@ -102,7 +99,6 @@ def cargar_participantes(archivo="participantes.txt"):
     except Exception as e:
         print(f"Error al cargar participantes: {e}")
     return participantes
-
 
 # Cargar los participantes desde el archivo al iniciar
 participantes = cargar_participantes()
@@ -286,111 +282,128 @@ while True:
             window["COMBO"].update(values=[e["nombre"] for e in eventos])  # Actualiza el ComboBox de participantes
             sg.popup("Evento eliminado con éxito.")
             
-if event == "Agregar":
-    try:
-        # Validar datos del formulario
-        evento = values["COMBO"]
-        tipo_documento = values["TipoDocumento"]
-        numero_documento = values["NumeroDocumento"]
-        telefono = values["TELEFONO"]
-        tipo_participante = values["TipoParticipante"]
-        direccion = values["Direccion"]
-        nombre = values["NAME"]
-        imagen = values["FileParticipantes"]
+# Evento para manejar cambios en el ComboBox (COMBO)
+while True:
+    event, values = window.read()
 
-        # Validaciones básicas
-        if not all([evento, tipo_documento, numero_documento, telefono, tipo_participante, direccion, nombre]):
-            raise ValueError("Todos los campos son obligatorios.")
-
-        if not numero_documento.isdigit():
-            raise ValueError("El número de documento debe ser un valor numérico.")
-
-        if imagen and not os.path.exists(imagen):
-            raise FileNotFoundError("No se encontró la imagen seleccionada.")
-
-        # Verificar si el participante ya existe
-        if any(p["numero_documento"] == numero_documento for p in participantes):
-            raise ValueError("Ya existe un participante con este número de documento.")
-
-        # Validar cupo del evento seleccionado si la opción está habilitada
-        if configuracion["validar_aforo"]:
-            evento_seleccionado = next((e for e in eventos if e["nombre"] == evento), None)
-            if evento_seleccionado:
-                inscritos = sum(1 for p in participantes if p["evento"] == evento)
-                if inscritos >= evento_seleccionado["cupo"]:
-                    raise ValueError("No hay cupos disponibles para este evento.")
-
-        # Agregar participante a la lista
-        nuevo_participante = {
-            "evento": evento,
-            "tipo_documento": tipo_documento,
-            "numero_documento": numero_documento,
-            "telefono": telefono,
-            "tipo_participante": tipo_participante,
-            "direccion": direccion,
-            "nombre": nombre,
-            "imagen": imagen
-        }
-        participantes.append(nuevo_participante)
-        guardar_participante(nuevo_participante)
-        window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento])
-        sg.popup("Participante agregado con éxito.")
-
-    except Exception as e:
-        sg.popup_error(f"Error al agregar participante: {e}")
-
-if event == "Modificar":
-    seleccionado = values["ListaParticipantes"]
-    try:
-        if not seleccionado:
-            raise ValueError("Debe seleccionar un participante para modificar.")
-
-        index = next(
-            (i for i, p in enumerate(participantes) if p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"]),
-            None
-        )
-        if index is None:
-            raise ValueError("Participante no encontrado.")
-
-        # Actualizar datos
-        participantes[index]["tipo_documento"] = values["TipoDocumento"] or participantes[index]["tipo_documento"]
-        participantes[index]["numero_documento"] = values["NumeroDocumento"] or participantes[index]["numero_documento"]
-        participantes[index]["telefono"] = values["TELEFONO"] or participantes[index]["telefono"]
-        participantes[index]["tipo_participante"] = values["TipoParticipante"] or participantes[index]["tipo_participante"]
-        participantes[index]["direccion"] = values["Direccion"] or participantes[index]["direccion"]
-        participantes[index]["nombre"] = values["NAME"] or participantes[index]["nombre"]
-        participantes[index]["imagen"] = values["FileParticipantes"] or participantes[index]["imagen"]
-
-        # Guardar cambios en el archivo
+    if event == sg.WIN_CLOSED:
+        # Guardar datos al cerrar
         with open("participantes.txt", "w") as file:
             for p in participantes:
-                guardar_participante(p, archivo="participantes.txt")
-        window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
-        sg.popup("Participante modificado con éxito.")
+                guardar_participante(p)
+        break
 
-    except Exception as e:
-        sg.popup_error(f"Error al modificar participante: {e}")
-        
-        
-        
-if event == "Eliminar":
-    seleccionado = values["ListaParticipantes"]
-    try:
-        if not seleccionado:
-            raise ValueError("Debe seleccionar un participante para eliminar.")
+    # Evento para actualizar lista de participantes al cambiar evento
+    if event == "COMBO":
+        evento_seleccionado = values["COMBO"]
+        if evento_seleccionado:
+            window["ListaParticipantes"].update(
+                [p["nombre"] for p in participantes if p["evento"] == evento_seleccionado]
+            )
 
-        # Eliminar participante de la lista
-        participantes = [p for p in participantes if not (p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"])]
+    # Evento para agregar participante
+    if event == "BTN_AGREGAR":
+        try:
+            evento = values["COMBO"]
+            tipo_documento = values["TipoDocumento"]
+            numero_documento = values["NumeroDocumento"]
+            telefono = values["TELEFONO"]
+            tipo_participante = values["TipoParticipante"]
+            direccion = values["Direccion"]
+            nombre = values["NAME"]
+            imagen = values["FileParticipantes"]
 
-        # Guardar cambios en el archivo
-        with open("participantes.txt", "w") as file:
-            for p in participantes:
-                guardar_participante(p, archivo="participantes.txt")
-        window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
-        sg.popup("Participante eliminado con éxito.")
+            # Validaciones
+            if not all([evento, tipo_documento, numero_documento, telefono, tipo_participante, direccion, nombre]):
+                raise ValueError("Todos los campos son obligatorios.")
 
-    except Exception as e:
-        sg.popup_error(f"Error al eliminar participante: {e}")
+            if not numero_documento.isdigit():
+                raise ValueError("El número de documento debe ser un valor numérico.")
+
+            if imagen and not os.path.exists(imagen):
+                raise FileNotFoundError("No se encontró la imagen seleccionada.")
+
+            if any(p["numero_documento"] == numero_documento for p in participantes):
+                raise ValueError("Ya existe un participante con este número de documento.")
+
+            if configuracion["validar_aforo"]:
+                evento_seleccionado = next((e for e in eventos if e["nombre"] == evento), None)
+                if evento_seleccionado:
+                    inscritos = sum(1 for p in participantes if p["evento"] == evento)
+                    if inscritos >= evento_seleccionado["cupo"]:
+                        raise ValueError("No hay cupos disponibles para este evento.")
+
+            nuevo_participante = {
+                "evento": evento,
+                "tipo_documento": tipo_documento,
+                "numero_documento": numero_documento,
+                "telefono": telefono,
+                "tipo_participante": tipo_participante,
+                "direccion": direccion,
+                "nombre": nombre,
+                "imagen": imagen
+            }
+            participantes.append(nuevo_participante)
+            guardar_participante(nuevo_participante)
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento])
+            sg.popup("Participante agregado con éxito.")
+
+        except Exception as e:
+            sg.popup_error(f"Error al agregar participante: {e}")
+
+    # Evento para modificar participante
+    if event == "BTN_MODIFICAR":
+        seleccionado = values["ListaParticipantes"]
+        evento_seleccionado = values["COMBO"]
+        try:
+            if not seleccionado or not evento_seleccionado:
+                raise ValueError("Debe seleccionar un evento y un participante para modificar.")
+
+            index = next(
+                (i for i, p in enumerate(participantes) if p["nombre"] == seleccionado[0] and p["evento"] == evento_seleccionado),
+                None
+            )
+            if index is None:
+                raise ValueError("Participante no encontrado.")
+
+            participantes[index]["tipo_documento"] = values["TipoDocumento"] or participantes[index]["tipo_documento"]
+            participantes[index]["numero_documento"] = values["NumeroDocumento"] or participantes[index]["numero_documento"]
+            participantes[index]["telefono"] = values["TELEFONO"] or participantes[index]["telefono"]
+            participantes[index]["tipo_participante"] = values["TipoParticipante"] or participantes[index]["tipo_participante"]
+            participantes[index]["direccion"] = values["Direccion"] or participantes[index]["direccion"]
+            participantes[index]["nombre"] = values["NAME"] or participantes[index]["nombre"]
+            participantes[index]["imagen"] = values["FileParticipantes"] or participantes[index]["imagen"]
+
+            with open("participantes.txt", "w") as file:
+                for p in participantes:
+                    guardar_participante(p)
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento_seleccionado])
+            sg.popup("Participante modificado con éxito.")
+
+        except Exception as e:
+            sg.popup_error(f"Error al modificar participante: {e}")
+
+    # Evento para eliminar participante
+    if event == "BTN_ELIMINAR":
+        seleccionado = values["ListaParticipantes"]
+        evento_seleccionado = values["COMBO"]
+        try:
+            if not seleccionado or not evento_seleccionado:
+                raise ValueError("Debe seleccionar un evento y un participante para eliminar.")
+
+            participantes = [
+                p for p in participantes if not (p["nombre"] == seleccionado[0] and p["evento"] == evento_seleccionado)
+            ]
+
+            with open("participantes.txt", "w") as file:
+                for p in participantes:
+                    guardar_participante(p)
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento_seleccionado])
+            sg.popup("Participante eliminado con éxito.")
+
+        except Exception as e:
+            sg.popup_error(f"Error al eliminar participante: {e}")
+
 
 
 
