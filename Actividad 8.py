@@ -45,7 +45,7 @@ def cargar_eventos():
             for linea in archivo:
                 datos = linea.strip().split(",")
                 if len(datos) != 6:
-                    print(f"Línea inválida: {linea.strip()}")
+                  
                     continue
                 nombre, fecha, hora, lugar, cupo, imagen = datos
                 eventos.append({
@@ -85,7 +85,7 @@ def cargar_participantes(archivo="participantes.txt"):
             for linea in file:
                 datos = linea.strip().split(",")
                 if len(datos) != 8:
-                    print(f"Línea inválida en participantes: {linea.strip()}")
+                    
                     continue
                 evento, tipo_documento, numero_documento, telefono, tipo_participante, direccion, nombre, imagen = datos
                 participantes.append({
@@ -439,30 +439,30 @@ while True:
             "\n".join(participantes_solo_primer_evento(participantes, eventos))
         )
 
-data_participantes = {
+
+participantes = {
     'Nombre': ['Juan', 'Ana', 'Luis', 'María', 'Pedro', 'Laura', 'Carlos', 'Sofía', 'Jorge'],
     'Tipo': ['Estudiante', 'Profesor', 'Estudiante', 'Profesor', 'Estudiante', 'Estudiante', 'Profesor', 'Estudiante', 'Estudiante'],
     'Evento': ['Evento A', 'Evento A', 'Evento B', 'Evento B', 'Evento C', 'Evento C', 'Evento A', 'Evento B', 'Evento C']
 }
 
-data_eventos = {
+eventos = {
     'Evento': ['Evento A', 'Evento B', 'Evento C'],
     'Fecha': ['2023-11-01', '2023-11-05', '2023-11-10']
 }
 
-# Convertir datos a DataFrames
-df_participantes = pdt.DataFrame(data_participantes)
-df_eventos = pdt.DataFrame(data_eventos)
+df_participantes = pdt.DataFrame(participantes)
+df_eventos = pdt.DataFrame(eventos)
 
-# Crear una función para cada gráfico
+
 def distribucion_participantes(ax):
-    """Gráfico circular de la distribución de participantes por tipo."""
+   
     data = df_participantes['Tipo'].value_counts()
     ax.pie(data, labels=data.index, autopct='%1.1f%%', startangle=90, colors=plt.cm.Paired.colors)
     ax.set_title('Distribución de participantes por tipo')
 
 def participantes_por_evento(ax):
-    """Gráfico de barras para participantes por evento."""
+    
     data = df_participantes['Evento'].value_counts()
     ax.bar(data.index, data.values, color='green')
     ax.set_title('Participantes por evento')
@@ -470,26 +470,27 @@ def participantes_por_evento(ax):
     ax.set_ylabel('Cantidad de participantes')
 
 def eventos_por_fecha(ax):
-    """Gráfico de barras horizontal para eventos por fecha."""
+  
     eventos_por_fecha = df_eventos['Fecha'].value_counts()
     ax.barh(eventos_por_fecha.index, eventos_por_fecha.values, color='lightgreen')
     ax.set_title('Eventos por fecha')
     ax.set_xlabel('Cantidad de eventos')
     ax.set_ylabel('Fecha')
 
-# Crear un layout para todos los gráficos
-def crear_layout_graficos():
-    """Crea un layout que muestre los tres gráficos en un solo espacio."""
-    fig, axs = plt.subplots(3, 1, figsize=(8, 15))  # Tres filas, una columna
 
-    # Llamar a cada gráfico en su respectiva posición
+def crear_layout_graficos():
+    
+    fig, axs = plt.subplots(3, 1, figsize=(8, 15))  
+
+   
     distribucion_participantes(axs[0])
     participantes_por_evento(axs[1])
     eventos_por_fecha(axs[2])
 
-    # Ajustar el espacio entre gráficos
+    
     plt.tight_layout()
     plt.show()
 
-# Ejecutar el layout de gráficos
+
 crear_layout_graficos()
+
