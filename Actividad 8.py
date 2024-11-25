@@ -444,4 +444,55 @@ while True:
 
         except Exception as e:
             sg.popup_error(f"Error al actualizar el análisis: {e}")
+            
+participantes = {
+    'Nombre': ['Juan', 'Ana', 'Luis', 'María', 'Pedro', 'Laura', 'Carlos', 'Sofía', 'Jorge'],
+    'Tipo': ['Estudiante', 'Profesor', 'Estudiante', 'Profesor', 'Estudiante', 'Estudiante', 'Profesor', 'Estudiante', 'Estudiante'],
+    'Evento': ['Evento A', 'Evento A', 'Evento B', 'Evento B', 'Evento C', 'Evento C', 'Evento A', 'Evento B', 'Evento C']
+}
+
+eventos = {
+    'Evento': ['Evento A', 'Evento B', 'Evento C'],
+    'Fecha': ['2023-11-01', '2023-11-05', '2023-11-10']
+}
+
+
+df_participantes = pdt.DataFrame(participantes)
+df_eventos = pdt.DataFrame(eventos)
+
+
+def distribucion_participantes(ax):
+    
+    data = df_participantes['Tipo'].value_counts()
+    ax.pie(data, labels=data.index, autopct='%1.1f%%', startangle=90, colors=plt.cm.Paired.colors)
+    ax.set_title('Distribución de participantes por tipo')
+
+def participantes_por_evento(ax):
+  
+    data = df_participantes['Evento'].value_counts()
+    ax.bar(data.index, data.values, color='green')
+    ax.set_title('Participantes por evento')
+    ax.set_xlabel('Evento')
+    ax.set_ylabel('Cantidad de participantes')
+
+def eventos_por_fecha(ax):
+  
+    eventos_por_fecha = df_eventos['Fecha'].value_counts()
+    ax.barh(eventos_por_fecha.index, eventos_por_fecha.values, color='lightgreen')
+    ax.set_title('Eventos por fecha')
+    ax.set_xlabel('Cantidad de eventos')
+    ax.set_ylabel('Fecha')
+
+def crear_layout_graficos():
+    
+    fig, axs = plt.subplots(3, 1, figsize=(8, 15))  
+   
+    distribucion_participantes(axs[0])
+    participantes_por_evento(axs[1])
+    eventos_por_fecha(axs[2])
+
+    plt.tight_layout()
+    plt.show()
+
+crear_layout_graficos()
 
