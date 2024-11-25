@@ -1,4 +1,4 @@
 validar_aforo=True
-solicitar_imagenes=False
-modificar_registros=False
-eliminar_registros=False
+solicitar_imagenes=True
+modificar_registros=True
+eliminar_registros=True
