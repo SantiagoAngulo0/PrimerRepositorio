@@ -111,6 +111,7 @@ participantes = cargar_participantes()
 
 
 def participantes_todos_los_eventos(participantes, eventos):
+   
     todos_los_eventos = {evento["nombre"] for evento in eventos}
     return [
         p["nombre"] for p in participantes
@@ -122,8 +123,9 @@ def participantes_al_menos_un_evento(participantes):
     
     return list({p["nombre"] for p in participantes})
 
+
 def participantes_solo_primer_evento(participantes, eventos):
- 
+  
     if not eventos:
         return []
     primer_evento = eventos[0]["nombre"]
@@ -209,13 +211,13 @@ layoutConfiguracion = [
 
 layoutAnalisis = [
     [sg.Text("Participantes que fueron a todos los eventos")],
-    [sg.Multiline(size=(40, 5), key="TodosLosEventos", disabled=True)],
+    [sg.Listbox(values=[],size=(40, 5), key="TodosLosEventos", disabled=True)],
 
     [sg.Text("Participantes que fueron al menos a un evento")],
-    [sg.Multiline(size=(40, 5), key="AlMenosUnEvento", disabled=True)],
+    [sg.Listbox(values=[],size=(40, 5), key="AlMenosUnEvento", disabled=True)],
 
     [sg.Text("Participantes que fueron solo al primer evento")],
-    [sg.Multiline(size=(40, 5), key="SoloPrimerEvento", disabled=True)],
+    [sg.Listbox(values=[],size=(40, 5), key="SoloPrimerEvento", disabled=True)],
 ]
 
 
@@ -428,31 +430,34 @@ while True:
         guardar_configuracion(values)
         sg.popup("Configuración guardada exitosamente.", title="Guardado")
 
+    
     if event == "ActualizarAnálisis":
-        window["TodosLosEventos"].update(
-            "\n".join(participantes_todos_los_eventos(participantes, eventos))
-        )
-        window["AlMenosUnEvento"].update(
-            "\n".join(participantes_al_menos_un_evento(participantes))
-        )
-        window["SoloPrimerEvento"].update(
-            "\n".join(participantes_solo_primer_evento(participantes, eventos))
-        )
+        try:
+          
+            todos_los_eventos = participantes_todos_los_eventos(participantes, eventos)
+            al_menos_un_evento = participantes_al_menos_un_evento(participantes)
+            solo_primer_evento = participantes_solo_primer_evento(participantes, eventos)
 
+            window["TodosLosEventos"].update("\n".join(todos_los_eventos))
+            window["AlMenosUnEvento"].update("\n".join(al_menos_un_evento))
+            window["SoloPrimerEvento"].update("\n".join(solo_primer_evento))
 
-participantes = {
+        except Exception as e:
+            sg.popup_error(f"Error al actualizar el análisis: {e}")
+
+data_participantes = {
     'Nombre': ['Juan', 'Ana', 'Luis', 'María', 'Pedro', 'Laura', 'Carlos', 'Sofía', 'Jorge'],
     'Tipo': ['Estudiante', 'Profesor', 'Estudiante', 'Profesor', 'Estudiante', 'Estudiante', 'Profesor', 'Estudiante', 'Estudiante'],
     'Evento': ['Evento A', 'Evento A', 'Evento B', 'Evento B', 'Evento C', 'Evento C', 'Evento A', 'Evento B', 'Evento C']
 }
 
-eventos = {
+data_eventos = {
     'Evento': ['Evento A', 'Evento B', 'Evento C'],
     'Fecha': ['2023-11-01', '2023-11-05', '2023-11-10']
 }
 
-df_participantes = pdt.DataFrame(participantes)
-df_eventos = pdt.DataFrame(eventos)
+df_participantes = pdt.DataFrame(data_participantes)
+df_eventos = pdt.DataFrame(data_eventos)
 
 
 def distribucion_participantes(ax):
