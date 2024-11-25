@@ -7,12 +7,12 @@ sg.theme("Dark Green3")
 
 
 def guardar_usuario(usuario, password, archivo="usuarios.txt"):
-    """Guarda un usuario y contraseña en el archivo de texto."""
+    
     with open(archivo, "a") as file:
         file.write(f"{usuario},{password}\n")
 
 def leer_usuarios(archivo="usuarios.txt"):
-    """Lee los usuarios del archivo y los devuelve como una lista de pares (usuario, contraseña)."""
+    
     usuarios = []
     try:
         with open(archivo, "r") as file:
@@ -20,16 +20,16 @@ def leer_usuarios(archivo="usuarios.txt"):
                 user, pwd = linea.strip().split(",")
                 usuarios.append((user, pwd))
     except FileNotFoundError:
-        with open(archivo, "w") as file:  # Crear archivo vacío si no existe
+        with open(archivo, "w") as file:
             pass
     return usuarios
 
 def verificar_usuario(usuario, password, archivo="usuarios.txt"):
-    """Verifica si un usuario y contraseña existen en el archivo."""
+    
     usuarios = leer_usuarios(archivo)
     return (usuario, password) in usuarios
 
-# --- Funciones para manejar eventos ---
+
 def guardar_evento(nombre, fecha, hora, lugar, cupo, imagen):
     try:
         with open("eventos.txt", "a") as archivo:
@@ -65,7 +65,7 @@ def cargar_eventos():
         return []
 
 def guardar_participante(participante, archivo="participantes.txt"):
-    """Guarda un participante en el archivo."""
+    
     try:
         with open(archivo, "a") as file:
             file.write(
@@ -78,7 +78,7 @@ def guardar_participante(participante, archivo="participantes.txt"):
 
 
 def cargar_participantes(archivo="participantes.txt"):
-    """Carga los participantes desde un archivo."""
+    
     participantes = []
     try:
         with open(archivo, "r") as file:
@@ -106,24 +106,24 @@ def cargar_participantes(archivo="participantes.txt"):
     return participantes
 
 
-# Cargar los participantes desde el archivo al iniciar
+
 participantes = cargar_participantes()
 
-# Funciones para filtrar participantes
+
 def participantes_todos_los_eventos(participantes, eventos):
-    """Devuelve una lista de participantes que asistieron a todos los eventos."""
     todos_los_eventos = {evento["nombre"] for evento in eventos}
     return [
         p["nombre"] for p in participantes
         if {p["evento"] for p in participantes if p["nombre"] == p["nombre"]} == todos_los_eventos
     ]
 
+
 def participantes_al_menos_un_evento(participantes):
-    """Devuelve una lista de participantes que asistieron al menos a un evento."""
+    
     return list({p["nombre"] for p in participantes})
 
 def participantes_solo_primer_evento(participantes, eventos):
-    """Devuelve una lista de participantes que asistieron solo al primer evento."""
+ 
     if not eventos:
         return []
     primer_evento = eventos[0]["nombre"]
@@ -132,11 +132,8 @@ def participantes_solo_primer_evento(participantes, eventos):
         if p["evento"] == primer_evento and sum(1 for x in participantes if x["nombre"] == p["nombre"]) == 1
     ]
 
-
-
 config_file = "configuracion.txt"
 
-# Función para cargar la configuración desde el archivo TXT
 def cargar_configuracion():
     configuracion = {
         "validar_aforo": True,
@@ -150,23 +147,297 @@ def cargar_configuracion():
                 clave, valor = linea.strip().split("=")
                 configuracion[clave] = valor == "True"
     except FileNotFoundError:
-        # Si el archivo no existe, devolver configuraciones por defecto
+       
         pass
     return configuracion
 
-# Función para guardar la configuración en el archivo TXT
+
 def guardar_configuracion(config):
     with open(config_file, "w") as f:
         for clave, valor in config.items():
             f.write(f"{clave}={valor}\n")
 
 
-# Cargar la configuración inicial
 configuracion = cargar_configuracion()
+eventos = cargar_eventos()  
+ 
 
-# --- Cargar eventos al iniciar ---
-eventos = cargar_eventos()  # Cargar eventos desde el archivo
-participantes = []  # Lista de participantes como diccionarios
+def ventana_login():
+    layout_login = [
+        [sg.Text("Usuario"), sg.InputText(key="usuario")],
+        [sg.Text("Contraseña"), sg.InputText(key="password", password_char="*")],
+        [sg.Button("Iniciar Sesión"), sg.Button("Cancelar")],
+    ]
+    return sg.Window("Login", layout_login)
+
+
+layoutEventos = [
+    [sg.Text("Nombre Evento"), sg.InputText(key="NameEvent")],
+    [sg.Text("Fecha"), sg.InputText(key="DATE")],
+    [sg.Text("Hora"), sg.InputText(key="TIME")],
+    [sg.Text("Lugar"), sg.InputText(key="PLACE")],
+    [sg.Text("Cupo"), sg.InputText(key="CUPO")],
+    [sg.Text('Agrega Imagen'), sg.Input(key='FileEventos', enable_events=True), sg.FileBrowse(key="Buscar")],
+    [sg.Button('AgregarEventos'), sg.Button('ModificarEventos'), sg.Button('EliminarEventos')],
+    [sg.Listbox(values=[e["nombre"] for e in eventos], size=(40, 10), key="LISTA", enable_events=True)],
+    [sg.Image(key="ImagenEventos")],
+]
+
+
+layoutParticipantes = [
+    [sg.Text("Evento"), sg.Combo([e["nombre"] for e in eventos], key="COMBO")],
+    [sg.Text("Tipo Documento"), sg.InputText(key="TipoDocumento")],
+    [sg.Text("Numero Documento"), sg.InputText(key="NumeroDocumento")],
+    [sg.Text("Telefono"), sg.InputText(key="TELEFONO")],
+    [sg.Text("Tipo Participante"), sg.Combo(["Estudiante", "Profesor", "Otro"], key="TipoParticipante")],
+    [sg.Text("Direccion"), sg.InputText(key="Direccion")],
+    [sg.Text("Nombre"), sg.InputText(key="NAME")],
+    [sg.Text('Agrega Imagen'), sg.Input(key='FileParticipantes', enable_events=True), sg.FileBrowse(key="Buscar")],
+    [sg.Button("Agregar"), sg.Button("Modificar"), sg.Button("Eliminar")],
+    [sg.Listbox(values=[], size=(40, 10), key="ListaParticipantes", enable_events=True)],
+    [sg.Image(key="ImagenParticipantes")],
+]
+
+
+layoutConfiguracion = [
+    [sg.Checkbox("Validar Aforo al agregar participantes", key="validar_aforo", default=configuracion["validar_aforo"])],
+    [sg.Checkbox("Solicitar Imagenes", key="solicitar_imagenes", default=configuracion["solicitar_imagenes"])],
+    [sg.Checkbox("Modificar Registros", key="modificar_registros", default=configuracion["modificar_registros"])],
+    [sg.Checkbox("Eliminar Registros", key="eliminar_registros", default=configuracion["eliminar_registros"])],
+    [sg.Button("Guardar Configuracion", key="guardar_configuracion")],
+]
+
+layoutAnalisis = [
+    [sg.Text("Participantes que fueron a todos los eventos")],
+    [sg.Multiline(size=(40, 5), key="TodosLosEventos", disabled=True)],
+
+    [sg.Text("Participantes que fueron al menos a un evento")],
+    [sg.Multiline(size=(40, 5), key="AlMenosUnEvento", disabled=True)],
+
+    [sg.Text("Participantes que fueron solo al primer evento")],
+    [sg.Multiline(size=(40, 5), key="SoloPrimerEvento", disabled=True)],
+]
+
+
+tabEventos = sg.Tab("Eventos", layoutEventos)
+tabParticipantes = sg.Tab("Participantes", layoutParticipantes)
+tabConfiguracion = sg.Tab("Configuracion", layoutConfiguracion)
+tabAnalisis = sg.Tab("Análisis", layoutAnalisis)
+
+
+
+def ventana_principal():
+    layout = [[sg.TabGroup([[tabEventos, tabParticipantes,tabAnalisis, tabConfiguracion]])]]
+    return sg.Window("LA COP 16", layout)
+	
+window_login = ventana_login()
+
+while True:
+    event, values = window_login.read()
+
+    if event == sg.WIN_CLOSED or event == "Cancelar":
+        break
+
+    if event == "Iniciar Sesión":
+        usuario = values["usuario"]
+        password = values["password"]
+        if verificar_usuario(usuario, password):
+            sg.popup("Login exitoso")
+            window_login.close()
+            window = ventana_principal()
+            break
+        else:
+            sg.popup_error("Usuario o contraseña incorrectos")
+
+
+while True:
+    event, values = window.read()
+
+    if event == sg.WIN_CLOSED:
+        guardar_evento(eventos)  
+        break
+
+    if event == "AgregarEventos":
+        nombre = values["NameEvent"]
+        fecha = values["DATE"]
+        hora = values["TIME"]
+        lugar = values["PLACE"]
+        cupo = values["CUPO"]
+        imagen = values["FileEventos"]
+
+        guardar_evento(nombre, fecha, hora, lugar, cupo, imagen)
+
+
+        try:
+            if not nombre or not fecha or not hora or not lugar or not cupo:
+                raise ValueError("Todos los campos son obligatorios.")
+
+            if not cupo.isdigit():
+                raise ValueError("El campo 'Cupo' debe ser un número.")
+
+            if nombre in [e["nombre"] for e in eventos]:
+                raise ValueError("El evento ya existe.")
+
+            if imagen and not os.path.exists(imagen):
+                raise FileNotFoundError("No se encontró la imagen seleccionada.")
+
+            eventos.append({
+                "nombre": nombre,
+                "fecha": fecha,
+                "hora": hora,
+                "lugar": lugar,
+                "cupo": int(cupo),
+                "imagen": imagen
+            })
+            window["LISTA"].update([e["nombre"] for e in eventos])
+            window["COMBO"].update(values=[e["nombre"] for e in eventos])  
+            sg.popup("Evento agregado con éxito.")
+        except Exception as e:
+            sg.popup_error(f"Error al agregar evento: {e}")
+
+    if event == "ModificarEventos":
+        seleccionado = values["LISTA"]
+        if seleccionado:
+            index = [e["nombre"] for e in eventos].index(seleccionado[0])
+            evento = eventos[index]
+            evento["nombre"] = values["NameEvent"] or evento["nombre"]
+            evento["fecha"] = values["DATE"] or evento["fecha"]
+            evento["hora"] = values["TIME"] or evento["hora"]
+            evento["lugar"] = values["PLACE"] or evento["lugar"]
+            evento["cupo"] = int(values["CUPO"]) if values["CUPO"].isdigit() else evento["cupo"]
+            evento["imagen"] = values["FileEventos"] or evento["imagen"]
+            window["LISTA"].update([e["nombre"] for e in eventos])
+            window["COMBO"].update(values=[e["nombre"] for e in eventos])  
+            sg.popup("Evento modificado con éxito.")
+
+    if event == "EliminarEventos":
+        seleccionado = values["LISTA"]
+        if seleccionado:
+            index = [e["nombre"] for e in eventos].index(seleccionado[0])
+            del eventos[index]
+            window["LISTA"].update([e["nombre"] for e in eventos])
+            window["COMBO"].update(values=[e["nombre"] for e in eventos])  
+            sg.popup("Evento eliminado con éxito.")
+
+    if event == "Agregar":
+        try:
+           
+            evento = values["COMBO"]
+            tipo_documento = values["TipoDocumento"]
+            numero_documento = values["NumeroDocumento"]
+            telefono = values["TELEFONO"]
+            tipo_participante = values["TipoParticipante"]
+            direccion = values["Direccion"]
+            nombre = values["NAME"]
+            imagen = values["FileParticipantes"]
+
+           
+            if not all([evento, tipo_documento, numero_documento, telefono, tipo_participante, direccion, nombre]):
+                raise ValueError("Todos los campos son obligatorios.")
+
+            if not numero_documento.isdigit():
+                raise ValueError("El número de documento debe ser un valor numérico.")
+
+            if imagen and not os.path.exists(imagen):
+                raise FileNotFoundError("No se encontró la imagen seleccionada.")
+
+            
+            if any(p["numero_documento"] == numero_documento for p in participantes):
+                raise ValueError("Ya existe un participante con este número de documento.")
+
+            
+            if configuracion["validar_aforo"]:
+                evento_seleccionado = next((e for e in eventos if e["nombre"] == evento), None)
+                if evento_seleccionado:
+                    inscritos = sum(1 for p in participantes if p["evento"] == evento)
+                    if inscritos >= evento_seleccionado["cupo"]:
+                        raise ValueError("No hay cupos disponibles para este evento.")
+
+            
+            nuevo_participante = {
+                "evento": evento,
+                "tipo_documento": tipo_documento,
+                "numero_documento": numero_documento,
+                "telefono": telefono,
+                "tipo_participante": tipo_participante,
+                "direccion": direccion,
+                "nombre": nombre,
+                "imagen": imagen
+            }
+            participantes.append(nuevo_participante)
+            guardar_participante(nuevo_participante)
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento])
+            sg.popup("Participante agregado con éxito.")
+        except Exception as e:
+            sg.popup_error(f"Error al agregar participante: {e}")
+
+    if event == "Modificar":
+        
+        try:
+            seleccionado = values["ListaParticipantes"]
+            if not seleccionado:
+                raise ValueError("Debe seleccionar un participante para modificar.")
+
+            index = next(
+                (i for i, p in enumerate(participantes) if p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"]),
+                None
+            )
+            if index is None:
+                raise ValueError("Participante no encontrado.")
+
+           
+            participantes[index]["tipo_documento"] = values["TipoDocumento"] or participantes[index]["tipo_documento"]
+            participantes[index]["numero_documento"] = values["NumeroDocumento"] or participantes[index]["numero_documento"]
+            participantes[index]["telefono"] = values["TELEFONO"] or participantes[index]["telefono"]
+            participantes[index]["tipo_participante"] = values["TipoParticipante"] or participantes[index]["tipo_participante"]
+            participantes[index]["direccion"] = values["Direccion"] or participantes[index]["direccion"]
+            participantes[index]["nombre"] = values["NAME"] or participantes[index]["nombre"]
+            participantes[index]["imagen"] = values["FileParticipantes"] or participantes[index]["imagen"]
+
+         
+            with open("participantes.txt", "w") as file:
+                for p in participantes:
+                    guardar_participante(p, archivo="participantes.txt")
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
+            sg.popup("Participante modificado con éxito.")
+        except Exception as e:
+            sg.popup_error(f"Error al modificar participante: {e}")
+
+
+    if event == "Eliminar":
+        
+        try:
+            seleccionado = values["ListaParticipantes"]
+            if not seleccionado:
+                raise ValueError("Debe seleccionar un participante para eliminar.")
+
+            participantes = [p for p in participantes if not (p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"])]
+
+
+            with open("participantes.txt", "w") as file:
+                for p in participantes:
+                    guardar_participante(p, archivo="participantes.txt")
+            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
+            sg.popup("Participante eliminado con éxito.")
+
+        except Exception as e:
+            sg.popup_error(f"Error al eliminar participante: {e}")
+            
+    if event == "Guardar Configuracion":
+       
+        guardar_configuracion(values)
+        sg.popup("Configuración guardada exitosamente.", title="Guardado")
+
+    if event == "ActualizarAnálisis":
+        window["TodosLosEventos"].update(
+            "\n".join(participantes_todos_los_eventos(participantes, eventos))
+        )
+        window["AlMenosUnEvento"].update(
+            "\n".join(participantes_al_menos_un_evento(participantes))
+        )
+        window["SoloPrimerEvento"].update(
+            "\n".join(participantes_solo_primer_evento(participantes, eventos))
+        )
 
 data_participantes = {
     'Nombre': ['Juan', 'Ana', 'Luis', 'María', 'Pedro', 'Laura', 'Carlos', 'Sofía', 'Jorge'],
@@ -222,289 +493,3 @@ def crear_layout_graficos():
 
 # Ejecutar el layout de gráficos
 crear_layout_graficos()
-
-# --- Ventana de Login ---
-def ventana_login():
-    layout_login = [
-        [sg.Text("Usuario"), sg.InputText(key="usuario")],
-        [sg.Text("Contraseña"), sg.InputText(key="password", password_char="*")],
-        [sg.Button("Iniciar Sesión"), sg.Button("Cancelar")],
-    ]
-    return sg.Window("Login", layout_login)
-
-# --- Layout para la pestaña de Eventos ---
-layoutEventos = [
-    [sg.Text("Nombre Evento"), sg.InputText(key="NameEvent")],
-    [sg.Text("Fecha"), sg.InputText(key="DATE")],
-    [sg.Text("Hora"), sg.InputText(key="TIME")],
-    [sg.Text("Lugar"), sg.InputText(key="PLACE")],
-    [sg.Text("Cupo"), sg.InputText(key="CUPO")],
-    [sg.Text('Agrega Imagen'), sg.Input(key='FileEventos', enable_events=True), sg.FileBrowse(key="Buscar")],
-    [sg.Button('AgregarEventos'), sg.Button('ModificarEventos'), sg.Button('EliminarEventos')],
-    [sg.Listbox(values=[e["nombre"] for e in eventos], size=(40, 10), key="LISTA", enable_events=True)],
-    [sg.Image(key="ImagenEventos")],
-]
-
-# --- Layout para la pestaña de Participantes ---
-layoutParticipantes = [
-    [sg.Text("Evento"), sg.Combo([e["nombre"] for e in eventos], key="COMBO")],
-    [sg.Text("Tipo Documento"), sg.InputText(key="TipoDocumento")],
-    [sg.Text("Numero Documento"), sg.InputText(key="NumeroDocumento")],
-    [sg.Text("Telefono"), sg.InputText(key="TELEFONO")],
-    [sg.Text("Tipo Participante"), sg.Combo(["Estudiante", "Profesor", "Otro"], key="TipoParticipante")],
-    [sg.Text("Direccion"), sg.InputText(key="Direccion")],
-    [sg.Text("Nombre"), sg.InputText(key="NAME")],
-    [sg.Text('Agrega Imagen'), sg.Input(key='FileParticipantes', enable_events=True), sg.FileBrowse(key="Buscar")],
-    [sg.Button("Agregar"), sg.Button("Modificar"), sg.Button("Eliminar")],
-    [sg.Listbox(values=[], size=(40, 10), key="ListaParticipantes", enable_events=True)],
-    [sg.Image(key="ImagenParticipantes")],
-]
-
-# --- Layout para la pestaña de Configuración ---
-layoutConfiguracion = [
-    [sg.Checkbox("Validar Aforo al agregar participantes", key="validar_aforo", default=configuracion["validar_aforo"])],
-    [sg.Checkbox("Solicitar Imagenes", key="solicitar_imagenes", default=configuracion["solicitar_imagenes"])],
-    [sg.Checkbox("Modificar Registros", key="modificar_registros", default=configuracion["modificar_registros"])],
-    [sg.Checkbox("Eliminar Registros", key="eliminar_registros", default=configuracion["eliminar_registros"])],
-    [sg.Button("Guardar Configuracion", key="guardar_configuracion")],
-]
-
-layoutAnalisis = [
-    [sg.Text("Participantes que fueron a todos los eventos")],
-    [sg.Multiline(size=(40, 5), key="TodosLosEventos", disabled=True)],
-
-    [sg.Text("Participantes que fueron al menos a un evento")],
-    [sg.Multiline(size=(40, 5), key="AlMenosUnEvento", disabled=True)],
-
-    [sg.Text("Participantes que fueron solo al primer evento")],
-    [sg.Multiline(size=(40, 5), key="SoloPrimerEvento", disabled=True)],
-]
-
-
-tabEventos = sg.Tab("Eventos", layoutEventos)
-tabParticipantes = sg.Tab("Participantes", layoutParticipantes)
-tabConfiguracion = sg.Tab("Configuracion", layoutConfiguracion)
-tabAnalisis = sg.Tab("Análisis", layoutAnalisis)
-
-
-# --- Ventana Principal ---
-def ventana_principal():
-    layout = [[sg.TabGroup([[tabEventos, tabParticipantes,tabAnalisis, tabConfiguracion]])]]
-    return sg.Window("LA COP 16", layout)
-
-# --- Lógica Principal ---
-window_login = ventana_login()
-
-while True:
-    event, values = window_login.read()
-
-    if event == sg.WIN_CLOSED or event == "Cancelar":
-        break
-
-    if event == "Iniciar Sesión":
-        usuario = values["usuario"]
-        password = values["password"]
-        if verificar_usuario(usuario, password):
-            sg.popup("Login exitoso")
-            window_login.close()
-            window = ventana_principal()
-            break
-        else:
-            sg.popup_error("Usuario o contraseña incorrectos")
-
-# --- Loop de la Ventana Principal ---
-while True:
-    event, values = window.read()
-
-    if event == sg.WIN_CLOSED:
-        guardar_evento(eventos)  # Guardar eventos al cerrar
-        break
-
-    # ----- Funcionalidad para Eventos -----
-    if event == "AgregarEventos":
-        nombre = values["NameEvent"]
-        fecha = values["DATE"]
-        hora = values["TIME"]
-        lugar = values["PLACE"]
-        cupo = values["CUPO"]
-        imagen = values["FileEventos"]
-
-        guardar_evento(nombre, fecha, hora, lugar, cupo, imagen)
-
-
-        try:
-            if not nombre or not fecha or not hora or not lugar or not cupo:
-                raise ValueError("Todos los campos son obligatorios.")
-
-            if not cupo.isdigit():
-                raise ValueError("El campo 'Cupo' debe ser un número.")
-
-            if nombre in [e["nombre"] for e in eventos]:
-                raise ValueError("El evento ya existe.")
-
-            if imagen and not os.path.exists(imagen):
-                raise FileNotFoundError("No se encontró la imagen seleccionada.")
-
-            eventos.append({
-                "nombre": nombre,
-                "fecha": fecha,
-                "hora": hora,
-                "lugar": lugar,
-                "cupo": int(cupo),
-                "imagen": imagen
-            })
-            window["LISTA"].update([e["nombre"] for e in eventos])
-            window["COMBO"].update(values=[e["nombre"] for e in eventos])  # Actualiza el ComboBox de participantes
-            sg.popup("Evento agregado con éxito.")
-        except Exception as e:
-            sg.popup_error(f"Error al agregar evento: {e}")
-
-    if event == "ModificarEventos":
-        seleccionado = values["LISTA"]
-        if seleccionado:
-            index = [e["nombre"] for e in eventos].index(seleccionado[0])
-            evento = eventos[index]
-            evento["nombre"] = values["NameEvent"] or evento["nombre"]
-            evento["fecha"] = values["DATE"] or evento["fecha"]
-            evento["hora"] = values["TIME"] or evento["hora"]
-            evento["lugar"] = values["PLACE"] or evento["lugar"]
-            evento["cupo"] = int(values["CUPO"]) if values["CUPO"].isdigit() else evento["cupo"]
-            evento["imagen"] = values["FileEventos"] or evento["imagen"]
-            window["LISTA"].update([e["nombre"] for e in eventos])
-            window["COMBO"].update(values=[e["nombre"] for e in eventos])  # Actualiza el ComboBox de participantes
-            sg.popup("Evento modificado con éxito.")
-
-    if event == "EliminarEventos":
-        seleccionado = values["LISTA"]
-        if seleccionado:
-            index = [e["nombre"] for e in eventos].index(seleccionado[0])
-            del eventos[index]
-            window["LISTA"].update([e["nombre"] for e in eventos])
-            window["COMBO"].update(values=[e["nombre"] for e in eventos])  # Actualiza el ComboBox de participantes
-            sg.popup("Evento eliminado con éxito.")
-
-    if event == "Agregar":
-        try:
-            # Validar datos del formulario
-            evento = values["COMBO"]
-            tipo_documento = values["TipoDocumento"]
-            numero_documento = values["NumeroDocumento"]
-            telefono = values["TELEFONO"]
-            tipo_participante = values["TipoParticipante"]
-            direccion = values["Direccion"]
-            nombre = values["NAME"]
-            imagen = values["FileParticipantes"]
-
-            # Validaciones básicas
-            if not all([evento, tipo_documento, numero_documento, telefono, tipo_participante, direccion, nombre]):
-                raise ValueError("Todos los campos son obligatorios.")
-
-            if not numero_documento.isdigit():
-                raise ValueError("El número de documento debe ser un valor numérico.")
-
-            if imagen and not os.path.exists(imagen):
-                raise FileNotFoundError("No se encontró la imagen seleccionada.")
-
-            # Verificar si el participante ya existe
-            if any(p["numero_documento"] == numero_documento for p in participantes):
-                raise ValueError("Ya existe un participante con este número de documento.")
-
-            # Validar cupo del evento seleccionado si la opción está habilitada
-            if configuracion["validar_aforo"]:
-                evento_seleccionado = next((e for e in eventos if e["nombre"] == evento), None)
-                if evento_seleccionado:
-                    inscritos = sum(1 for p in participantes if p["evento"] == evento)
-                    if inscritos >= evento_seleccionado["cupo"]:
-                        raise ValueError("No hay cupos disponibles para este evento.")
-
-            # Agregar participante a la lista
-            nuevo_participante = {
-                "evento": evento,
-                "tipo_documento": tipo_documento,
-                "numero_documento": numero_documento,
-                "telefono": telefono,
-                "tipo_participante": tipo_participante,
-                "direccion": direccion,
-                "nombre": nombre,
-                "imagen": imagen
-            }
-            participantes.append(nuevo_participante)
-            guardar_participante(nuevo_participante)
-            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == evento])
-            sg.popup("Participante agregado con éxito.")
-        except Exception as e:
-            sg.popup_error(f"Error al agregar participante: {e}")
-
-    if event == "Modificar":
-        
-        try:
-            seleccionado = values["ListaParticipantes"]
-            if not seleccionado:
-                raise ValueError("Debe seleccionar un participante para modificar.")
-
-            index = next(
-                (i for i, p in enumerate(participantes) if p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"]),
-                None
-            )
-            if index is None:
-                raise ValueError("Participante no encontrado.")
-
-            # Actualizar datos
-            participantes[index]["tipo_documento"] = values["TipoDocumento"] or participantes[index]["tipo_documento"]
-            participantes[index]["numero_documento"] = values["NumeroDocumento"] or participantes[index]["numero_documento"]
-            participantes[index]["telefono"] = values["TELEFONO"] or participantes[index]["telefono"]
-            participantes[index]["tipo_participante"] = values["TipoParticipante"] or participantes[index]["tipo_participante"]
-            participantes[index]["direccion"] = values["Direccion"] or participantes[index]["direccion"]
-            participantes[index]["nombre"] = values["NAME"] or participantes[index]["nombre"]
-            participantes[index]["imagen"] = values["FileParticipantes"] or participantes[index]["imagen"]
-
-            # Guardar cambios en el archivo
-            with open("participantes.txt", "w") as file:
-                for p in participantes:
-                    guardar_participante(p, archivo="participantes.txt")
-            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
-            sg.popup("Participante modificado con éxito.")
-        except Exception as e:
-            sg.popup_error(f"Error al modificar participante: {e}")
-
-
-
-    if event == "Eliminar":
-        
-        try:
-            seleccionado = values["ListaParticipantes"]
-            if not seleccionado:
-                raise ValueError("Debe seleccionar un participante para eliminar.")
-
-            # Eliminar participante de la lista
-            participantes = [p for p in participantes if not (p["nombre"] == seleccionado[0] and p["evento"] == values["COMBO"])]
-
-            # Guardar cambios en el archivo
-            with open("participantes.txt", "w") as file:
-                for p in participantes:
-                    guardar_participante(p, archivo="participantes.txt")
-            window["ListaParticipantes"].update([p["nombre"] for p in participantes if p["evento"] == values["COMBO"]])
-            sg.popup("Participante eliminado con éxito.")
-
-        except Exception as e:
-            sg.popup_error(f"Error al eliminar participante: {e}")
-            
-    if event == "Guardar Configuracion":
-        # Guardar los valores de los checkboxes en el archivo de configuración
-        guardar_configuracion(values)
-        sg.popup("Configuración guardada exitosamente.", title="Guardado")
-
-    if event == "ActualizarAnálisis":
-        window["TodosLosEventos"].update(
-            "\n".join(participantes_todos_los_eventos(participantes, eventos))
-        )
-        window["AlMenosUnEvento"].update(
-            "\n".join(participantes_al_menos_un_evento(participantes))
-        )
-        window["SoloPrimerEvento"].update(
-            "\n".join(participantes_solo_primer_evento(participantes, eventos))
-        )
-
-
-
-
